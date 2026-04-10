@@ -7,6 +7,7 @@ import werkzeug.exceptions
 from .. import cache
 from .common import get_logs, search_players, logs_last_modified
 from .util import get_db, get_mc, get_pagination, last_modified, view_updated
+from .root import get_log_simple
 
 api = flask.Blueprint('api', __name__)
 
@@ -27,6 +28,18 @@ def next_page(rows):
     if len(rows) == limit:
         args['offset'] = offset + limit
         return flask.url_for(flask.request.endpoint, **args)
+
+@api.route('/log/<string:logid>')
+def log(logid):
+    if resp := logs_last_modified():
+        return resp
+    
+    view = flask.request.args.get('view', 'basic', str)
+    log = get_log_simple(logid, view)
+    print(log)
+    if log == {}:
+        return flask.jsonify(error={'code': 404, 'description': f"Could not find a log with ID {logid}", 'name': "Not Found"})
+    return flask.jsonify(log=log), 200, {'Cache-Control': 'no-cache'}
 
 @api.route('/logs')
 def logs():

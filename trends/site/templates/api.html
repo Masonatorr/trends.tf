@@ -15,6 +15,12 @@
 	<a href="{{ url_for('api.{}'.format(endpoint)) }}">{{ pre(apipath(endpoint, version)) }}</a>
 </h3>
 {% endmacro %}
+{% macro dumbapidef(endpoint, version=1, method="GET", url=endpoint) %}
+<h3 id="api-{{method }}-{{ endpoint }}-v{{ version }}">
+	{{ method }}
+	<a href="api/v1/{{ url }}">{{ pre(apipath(endpoint, version)) }}</a>
+</h3>
+{% endmacro %}
 {% macro apiref(endpoint, version=1, method="GET") %}
 {{ ref(apipath(endpoint, version), "api-{}-{}-v{}".format(method, endpoint, version)) }}
 {% endmacro %}
@@ -476,6 +482,110 @@
 		</p>
 		<dt>{{ pre('next_page') }} : option(string)<dt>
 		<dd>The {{ fieldref('next_page') }} of logs, if any</dd>
+	</dl>
+	
+	{{ dumbapidef('log/[logid]', url='log/3897045') }}
+	<p>
+	The {{ pre('/v1/log/') }} endpoint provides a single log summary similar to
+	the {{ pre('/v1/logs') }} endpoint. It is supplied a {{ fieldref('logid') }} directly in the
+	URL (ie. <a href="https://trends.tf/api/v1/log/1234567">{{ pre('trends.tf/api/v1/log/1234567') }}</a>), unlike the {{ pre('/v1/logs') }} endpoint. This is useful if you already know
+	the ID of the log you want to find.
+	</p>
+
+	<h4>Parameters</h4>
+	The {{ pre('/v1/log/') }} endpoint supports the following additional parameters:
+	<ul>
+		<li>
+			{{ pre("view") }} (default {{ pre("basic") }})
+			<p>
+			Return additional members for each log, as described below. Valid values
+			are:
+			<dl>
+				<dt>{{ pre("basic") }}</dt>
+				<dd>The default with no additional members</dd>
+				<dt>{{ pre("players") }}</dt>
+				<dd>Include additional members for players in the log</dd>
+			</dl>
+			</p>
+		</li>
+	</ul>
+	</p>
+	<h4>Response</h4>
+	<dl>
+		<dt>{{ pre('log') }} : dictionary(object)<dt>
+		<dd>
+		<p>
+		The returned dictionary contains the following:
+		<dl>
+			<dt>{{ pre('demoid') }} : option(number)</dt>
+			<dd>The linked {{ fieldref('demoid') }}, if any</dd>
+			<dt>{{ pre('duplicate_of') }} : option(array(number))</dt>
+			<dd>
+			An array of {{ fieldref('logid') }}s that this log is a duplicate of (which
+			may themselves be duplicates), if any. Duplicate logs are typically combined
+			or otherwise duplicated versions of other logs. They should not be used for
+			statistical purposes.
+			</dd>
+			<dt>{{ pre('duration') }} : number</dt>
+			<dd>The duration of the log, in seconds</dd>
+			<dt>{{ pre('format') }} : option(string)</dt>
+			<dd>The {{ fieldref('format') }} of the log</dd>
+			<dt>{{ pre('league') }} : option(string)</dt>
+			<dd>The {{ fieldref('league') }} of the linked match, if any</dd>
+			<dt>{{ pre('logid') }} : number</dt>
+			<dd>The {{ fieldref('logid') }} of the log</dd>
+			<dt>{{ pre('map') }} : string</dt>
+			<dd>The (user-supplied) map this log was played on</dd>
+			<dt>{{ pre('matchid') }} : option(number)</dt>
+			<dd>The {{ fieldref('matchid') }} of the linked match, if any</dd>
+			<dt>{{ pre('time') }} : number</dt>
+			<dd>The upload {{ fieldref('time') }} of the log</dd>
+			<dt>{{ pre('title') }} : string</dt>
+			<dd>The (user-supplied) title for the log</dd>
+			<dt>{{ pre('updated') }} : number</dt>
+			<dd>The {{ fieldref('time') }} this object was last modified</dd>
+		</dl>
+		</p>
+
+		<p>
+		Additionally, if the parameter {{ pre("view") }} is {{ pre("players") }}, the
+		following members are included:
+		<dl>
+			<dt>{{ pre('blue') }}, {{ pre('red') }} : object</dt>
+			<dd>
+			<p>
+			Information about the blue and red teams:
+			<dl>
+				<dt>{{ pre('players') }} : array(string)</dt>
+				<dd>
+				An array of {{ fieldref('steamid64') }}s, one for each player on
+				the team.
+				</dd>
+				<dt>{{ pre('rgl_teamid') }} : option(number)</dt>
+				<dd>
+				The RGL {{ pre("teamId") }} of this team. This ID is only valid
+				for use with the RGL API, and cannot be used elsewhere on
+				{{ trends() }}. This member is only present when {{ pre('league') }}
+				is {{ pre('rgl') }}.
+				</dd>
+				<dt>{{ pre('teamid') }} : option(number)</dt>
+				<dd>
+				The {{ fieldref('teamid') }} of this team, if there is a linked
+				match.
+				</dd>
+				<dt>{{ pre('score') }} : number</dt>
+				<dd>
+				The points scored by this team. This is the raw number as reported
+				on the scoreboard, and does not reflect rounds played. For instance,
+				if there is a stalemate due to the round timer this will not be
+				reflected in either score, and if there is a stalemate due to the
+				time limit this will be an extra point for the winning team.
+				</dd>
+			</dl>
+			</p>
+			</dd>
+		</dl>
+		</p>
 	</dl>
 	</div>
 {% endblock %}

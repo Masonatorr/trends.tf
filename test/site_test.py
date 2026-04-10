@@ -258,6 +258,53 @@ def test_dupes(connection):
     cur.execute("SELECT logid, duplicate_of FROM log WHERE duplicate_of NOTNULL")
     assert { logid: duplicate_of for logid, duplicate_of in cur } == duplicates
 
+def test_api_log(client):
+    def get(id, **params):
+        resp = client.get(f"api/v1/log/{id}", query_string=params)
+        assert resp.status_code == 200
+        resp = resp.json
+        return resp['log']
+    
+    #fetch 100 saved logs
+    logs = client.get("api/v1/logs").json['logs']
+    valid_keys = {
+        'demoid',
+        'duplicate_of',
+        'duration',
+        'format',
+        'league',
+        'logid',
+        'map',
+        'matchid',
+        'time',
+        'title',
+        'updated',
+    }
+
+    #iterate through all 100 logs
+    for log in logs:
+        current_log_id = log['logid']
+        log_by_id = get(current_log_id)             #fetch log info using the "log/<logid>" endpoint
+        assert log_by_id['logid'] == current_log_id #verify that the fetched log's id is the same one we asked for
+
+        log_by_id = get(current_log_id, view='players')             #test for player info with the "view=players" parameter
+        assert set(log_by_id.keys()) == valid_keys | { 'red', 'blue' }
+        for team in ('red', 'blue'):
+            team = log_by_id[team]
+            if log_by_id['league'] is None:
+                assert team['teamid'] is None
+            else:
+                assert team['teamid'] is not None
+
+            if log_by_id['league'] == 'rgl':
+                assert team['rgl_teamid'] is not None
+            else:
+                assert team['rgl_teamid'] is None
+
+            assert team['score'] is not None
+            for player in team['players']:
+                SteamID(player)
+
 def test_api_logs(client):
     def get(**params):
         resp = client.get("api/v1/logs", query_string=params)

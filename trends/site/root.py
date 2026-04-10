@@ -361,6 +361,85 @@ def get_log(mc, logid):
 
     return log
 
+def get_log_simple(logid, view):
+    params = { 'logid': logid }
+    cur = get_db().cursor()
+
+    print("view")
+    print(view)
+    if view == 'players':
+        extra_cols = """,
+            json_build_object(
+                'teamid', CASE WHEN team1_is_red THEN teamid1 ELSE teamid2 END,
+                'rgl_teamid', CASE WHEN team1_is_red THEN
+                    team1.rgl_teamid
+                ELSE
+                    team2.rgl_teamid
+                END,
+                'score', red_score,
+                'players', red_players
+            ) AS red,
+            json_build_object(
+                'teamid', CASE WHEN team1_is_red THEN teamid2 ELSE teamid1 END,
+                'rgl_teamid', CASE WHEN team1_is_red THEN
+                    team2.rgl_teamid
+                ELSE
+                    team1.rgl_teamid
+                END,
+                'score', blue_score,
+                'players', blue_players
+            ) AS blue"""
+
+        extra_tables = """
+            CROSS JOIN LATERAL (SELECT
+                    array_agg(steamid64::TEXT) FILTER (WHERE team = 'Red') AS red_players,
+                    array_agg(steamid64::TEXT) FILTER (WHERE team = 'Blue') AS blue_players
+                FROM player_stats_backing
+                JOIN player USING (playerid)
+                WHERE logid = log.logid
+            ) AS players
+            LEFT JOIN match USING (league, matchid)
+            LEFT JOIN team_comp_backing AS team1 ON (
+                log.league = 'rgl'
+                AND team1.league = 'rgl'
+                AND team1.compid = match.compid
+                AND team1.teamid = match.teamid1
+            ) LEFT JOIN team_comp_backing AS team2 ON (
+                log.league = 'rgl'
+                AND team2.league = 'rgl'
+                AND team2.compid = match.compid
+                AND team2.teamid = match.teamid2
+            )
+            """
+    else:
+        extra_cols = ""
+        extra_tables = ""
+        
+    cur.execute(f"""SELECT
+                        logid,
+                        time,
+                        updated,
+                        title,
+                        map,
+                        format,
+                        duration,
+                        duplicate_of,
+                        demoid,
+                        log.league,
+                        matchid
+                        {extra_cols}
+                    FROM log
+                    LEFT JOIN format USING (formatid)
+                    JOIN map USING (mapid)
+                    {extra_tables}
+                    WHERE logid = %(logid)s;""", params)
+    if s := cur.fetchone():
+        log = dict(s)
+    else:
+        return {}
+    
+    return log
+
 @cache.mutable("match_{}_{}")
 def get_match(mc, league, matchid):
     cur = get_db().cursor()
